@@ -5,6 +5,7 @@
 
 #define TOTAL_CHARS 256
 #define MAX_CODE_WIDTH 8 //pow(2, height(root)); //Worst case height of tree when all chars have same frequency
+
 int height(Node* node)
 {
     if (node==NULL)
@@ -83,15 +84,17 @@ void decode(Node* root, int &index, string str)
         decode(root->right, index, str);
 }
 
-__global__ void encode_kernel(char *d_encode_table, char *d_input_string, char *d_encoded_string)
+__global__ void my_encode_kernel(char *encode_table, char *input_string, char *encoded_string, size_t input_size)
 {
+    //printf("In encode_kernel input string:%c\n", input_string[threadIdx.x]);
     int tid = threadIdx.x + (blockIdx.x * blockDim.x);
-    printf("tid:%d\n", tid);
+    //printf("tid:%d\n", tid);
     //int row = tid / MAX_CODE_WIDTH;
     //int col = tid % MAX_CODE_WIDTH;
-    for (int i = 0; i < MAX_CODE_WIDTH; i++) {
-        //d_encoded_string[tid * MAX_CODE_WIDTH + i] = d_encode_table[d_input_string[tid] + i];
-        printf("%c", d_encode_table[d_input_string[tid] + i]);
+    if (tid < input_size) {
+        for (int i = 0; i < MAX_CODE_WIDTH; i++) {
+            encoded_string[tid * MAX_CODE_WIDTH + i] = encode_table[input_string[tid] * MAX_CODE_WIDTH + i];
+        }
     }
     __syncthreads();
 }
@@ -141,6 +144,7 @@ void buildHuffmanTree(string text)
     encode(root, "", huffmanCode);
 
     int table_size = TOTAL_CHARS * MAX_CODE_WIDTH * sizeof(char);
+    cout << "table size: " << table_size << endl;
     char *h_encode_table = (char*) malloc(table_size);
     int encode_string_size = text.length() * MAX_CODE_WIDTH * sizeof(char);
     char *h_encoded_string = (char*) malloc(encode_string_size);
@@ -151,23 +155,25 @@ void buildHuffmanTree(string text)
     memset(h_encode_table, 0, table_size);
     memset(h_encoded_string, 0, encode_string_size);
 
-    //int threadsPerBlock = 32;
-	//int blocksPerGrid = nodes / threadsPerBlock;
-    //kernel_encode<<<blocksPerGrid, threadsPerBlock>>>(root, "", huffmanCode, nodes);
-
-    cout << "Huffman Codes are :\n" << '\n';
+    //cout << "Huffman Codes are :\n" << '\n';
     for (auto pair: huffmanCode) {
-        cout << pair.first << " " << pair.second << '\n';
+        //cout << pair.first << " " << pair.second << '\n';
         for (int j = 0; j < MAX_CODE_WIDTH; j++) {
             if (j < pair.second.length())
                 h_encode_table[pair.first * MAX_CODE_WIDTH + j] = pair.second[j];
         }
-        cout << endl;
+        //cout << endl;
     }
+    //cout << "h_encode_table:\n";
+    //for (int i = 0; i < table_size; i++) {
+    //    printf("i:%d val:%c\n", i, h_encode_table[i]);
+    //}
 
     // Allocate encode kernel variables
     char h_input_string[text.length()];
     strcpy(h_input_string, text.c_str());
+    //cout << "input text:" << text << endl;
+    //cout << "input string in host array:" << h_input_string << endl;
     char *d_input_string = NULL;
     err = cudaMalloc((void**)&d_input_string, text.length()* sizeof(char));
     if (err != cudaSuccess)
@@ -214,7 +220,9 @@ void buildHuffmanTree(string text)
     cudaEventCreate(&stop);
 
 	cudaEventRecord(start);
-	encode_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_encode_table, d_input_string, d_encoded_string);
+    //printf("Before my_encode_kernel");
+    my_encode_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_encode_table, d_input_string, d_encoded_string, text.length());
+    //printf("After my_encode_kernel");
 	cudaEventRecord(stop);
 
 	cudaEventSynchronize(stop);
@@ -235,23 +243,26 @@ void buildHuffmanTree(string text)
     }
     cudaThreadSynchronize();
 
+    string str = "";
+    printf("After kernel execution result:\n");
+    for(int i = 0; i < text.length()*8; i++) {
+        printf("%c", h_encoded_string[i]);
+        if (h_encoded_string[i] != 0)
+            str += h_encoded_string[i];
+    }
     cout << "\nOriginal string was :\n" << text << '\n';
 
     // print encoded string
-    /*string str = "";
-    for (char ch: text) {
-        str += huffmanCode[ch];
-    }*/
 
-    cout << "\nEncoded string is :\n" << h_encoded_string << '\n';
+    cout << "\nEncoded string is :\n" << str << '\n';
 
     // traverse the Huffman Tree again and this time
     // decode the encoded string
-    /*int index = -1;
+    int index = -1;
     cout << "\nDecoded string is: \n";
     while (index < (int)str.size() - 2) {
         decode(root, index, str);
-    }*/
+    }
 
     // Free Device variables
     cudaFree(d_input_string);
