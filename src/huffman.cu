@@ -1,27 +1,10 @@
-#include <huffman.h>
-#include <histogram.h>
+#include "huffman.h"
+#include "histogram.h"
 // For the CUDA runtime routines (prefixed with "cuda_")
 #include <cuda_runtime.h>
 
 #define TOTAL_CHARS 256
 #define MAX_CODE_WIDTH 8 //pow(2, height(root)); //Worst case height of tree when all chars have same frequency
-
-int height(Node* node)
-{
-    if (node==NULL)
-        return 0;
-    else
-    {
-        /* compute the height of each subtree */
-        int lheight = height(node->left);
-        int rheight = height(node->right);
-
-        /* use the larger one */
-        if (lheight > rheight)
-            return(lheight+1);
-        else return(rheight+1);
-    }
-}
 
 // Function to allocate a new tree node
 Node* getNode(char ch, int freq, Node* left, Node* right)
@@ -99,52 +82,11 @@ __global__ void my_encode_kernel(char *encode_table, char *input_string, char *e
     __syncthreads();
 }
 
-// Builds Huffman Tree and decode given input text
-void buildHuffmanTree(string text)
+void generateEncodedString(unordered_map<char, string> huffmanCode, string &text, string &final_encoded_string)
 {
     cudaError_t err = cudaSuccess;
-    int nodes = 0;
-    // count frequency of appearance of each character and store it in a map
-    unordered_map<char, int> freq;
-    calculateFrequencies(text, freq);
-    // Create a priority queue to store live nodes of
-    // Huffman tree;
-    priority_queue<Node*, vector<Node*>, comp> pq;
-
-    // Create a leaf node for each character and add it
-    // to the priority queue.
-    for (auto pair: freq) {
-        pq.push(getNode(pair.first, pair.second, nullptr, nullptr));
-        nodes++;
-    }
-
-    // do till there is more than one node in the queue
-    while (pq.size() != 1)
-    {
-        // Remove the two nodes of highest priority
-        // (lowest frequency) from the queue
-        Node *left = pq.top(); pq.pop();
-        Node *right = pq.top();    pq.pop();
-
-        // Create a new internal node with these two nodes
-        // as children and with frequency equal to the sum
-        // of the two nodes' frequencies. Add the new node
-        // to the priority queue.
-        int sum = left->freq + right->freq;
-        pq.push(getNode('\0', sum, left, right));
-        nodes++;
-    }
-    //char *host_a = (char *)malloc(sizeof(char)*nodes);
-    //int inx = 0;
-    //preorder(pq, a, &inx);
-    printf("Total nodes:%d\n", nodes);
-    // root stores pointer to root of Huffman Tree
-    Node* root = pq.top();
-    unordered_map<char, string> huffmanCode;
-    encode(root, "", huffmanCode);
-
     int table_size = TOTAL_CHARS * MAX_CODE_WIDTH * sizeof(char);
-    cout << "table size: " << table_size << endl;
+    //cout << "table size: " << table_size << endl;
     char *h_encode_table = (char*) malloc(table_size);
     int encode_string_size = text.length() * MAX_CODE_WIDTH * sizeof(char);
     char *h_encoded_string = (char*) malloc(encode_string_size);
@@ -164,10 +106,6 @@ void buildHuffmanTree(string text)
         }
         //cout << endl;
     }
-    //cout << "h_encode_table:\n";
-    //for (int i = 0; i < table_size; i++) {
-    //    printf("i:%d val:%c\n", i, h_encode_table[i]);
-    //}
 
     // Allocate encode kernel variables
     char h_input_string[text.length()];
@@ -243,17 +181,77 @@ void buildHuffmanTree(string text)
     }
     cudaThreadSynchronize();
 
-    string str = "";
     printf("After kernel execution result:\n");
     for(int i = 0; i < text.length()*8; i++) {
         printf("%c", h_encoded_string[i]);
         if (h_encoded_string[i] != 0)
-            str += h_encoded_string[i];
+            final_encoded_string += h_encoded_string[i];
     }
+    // Free Device variables
+    cudaFree(d_input_string);
+    cudaFree(d_encode_table);
+    cudaFree(d_encoded_string);
+
+    // Free host memory
+    free(h_encode_table);
+    free(h_encoded_string);
+
+}
+
+// Builds Huffman Tree and decode given input text
+void buildHuffmanTree(string text)
+{
+    int nodes = 0;
+    // count frequency of appearance of each character and store it in a map
+    unordered_map<char, int> freq;
+    calculateFrequencies(text, freq);
+    // Create a priority queue to store live nodes of
+    // Huffman tree;
+    priority_queue<Node*, vector<Node*>, comp> pq;
+
+    // Create a leaf node for each character and add it
+    // to the priority queue.
+    for (auto pair: freq) {
+        pq.push(getNode(pair.first, pair.second, nullptr, nullptr));
+        nodes++;
+    }
+
+    // do till there is more than one node in the queue
+    while (pq.size() != 1)
+    {
+        // Remove the two nodes of highest priority
+        // (lowest frequency) from the queue
+        Node *left = pq.top(); pq.pop();
+        Node *right = pq.top();    pq.pop();
+
+        // Create a new internal node with these two nodes
+        // as children and with frequency equal to the sum
+        // of the two nodes' frequencies. Add the new node
+        // to the priority queue.
+        int sum = left->freq + right->freq;
+        pq.push(getNode('\0', sum, left, right));
+        nodes++;
+    }
+
+    //int inx = 0;
+    //preorder(pq, a, &inx);
+    printf("Total nodes:%d\n", nodes);
+    // root stores pointer to root of Huffman Tree
+    Node* root = pq.top();
+    int treeHeight = height(root);
+    int max_nodes = pow(2, treeHeight);
+    char *h_arr = (char *)malloc(sizeof(char)*max_nodes);
+    printLevelOrder(root, h_arr, treeHeight);
+    printf("Tree converted to array :\n");
+    for (int i = 0; i < max_nodes; i++)
+        printf("%c->", h_arr[i]);
+
+    unordered_map<char, string> huffmanCode;
+    encode(root, "", huffmanCode);
+    string str = "";
+    generateEncodedString(huffmanCode, text, str);
     cout << "\nOriginal string was :\n" << text << '\n';
-
     // print encoded string
-
     cout << "\nEncoded string is :\n" << str << '\n';
 
     // traverse the Huffman Tree again and this time
@@ -263,13 +261,4 @@ void buildHuffmanTree(string text)
     while (index < (int)str.size() - 2) {
         decode(root, index, str);
     }
-
-    // Free Device variables
-    cudaFree(d_input_string);
-    cudaFree(d_encode_table);
-    cudaFree(d_encoded_string);
-
-    // Free host memory
-    free(h_encode_table);
-    free(h_encoded_string);
 }

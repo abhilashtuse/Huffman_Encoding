@@ -15,11 +15,8 @@ NVCCFLAGS	:= -lineinfo -arch=sm_53 --ptxas-options=-v -g
 
 all:	main
 
-huffman: huffman.o $(DEP)
-	$(CC) $(INC) $(NVCCFLAGS) $(CCFLAGS) -o huffman.o $(LIB)
-
-main: main.o huffman.o histogram.o $(DEP)
-	$(CC) $(INC) $(NVCCFLAGS) $(CCFLAGS) -o main main.o huffman.o histogram.o $(LIB)
+main: main.o huffman.o histogram.o binary_tree.o $(DEP)
+	$(CC) $(INC) $(NVCCFLAGS) $(CCFLAGS) -o main main.o huffman.o histogram.o binary_tree.o $(LIB)
 
 .cpp.o:
 	$(CC) $(INC) $(NVCCFLAGS) $(CCFLAGS) $(DEF) -c $< -o $@

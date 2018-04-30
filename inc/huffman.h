@@ -5,19 +5,12 @@
 #include <string>
 #include <queue>
 #include <unordered_map>
+#include "binary_tree.h"
 
 using namespace std;
 
-// A Tree node
-struct Node
-{
-    char ch;
-    int freq;
-    Node *left, *right;
-};
-
+__global__ void encode_kernel(char *d_encode_table, char *d_input_string, char *d_encoded_string);
 void buildHuffmanTree(string text);
-Node* getNode(char ch, int freq, Node* left, Node* right);
 void encode(Node* root, string str, unordered_map<char, string> &huffmanCode);
 void decode(Node* root, int &index, string str);
 #endif /* HUFFMAN_H */
