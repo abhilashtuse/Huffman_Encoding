@@ -73,11 +73,11 @@ void printLevelOrder(Node *root, char *arr, int treeHeight)
             q.pop();
             if (node->left != NULL)
                 q.push(node->left);
-            else if (counter < treeHeight - 1)
+            else if (counter < treeHeight)
                 q.push(marker);
             if (node->right != NULL)
                 q.push(node->right);
-            else if (counter < treeHeight - 1)
+            else if (counter < treeHeight)
                 q.push(marker);
 
             nodeCount--;

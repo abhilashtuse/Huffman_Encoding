@@ -57,7 +57,7 @@ void decode(Node* root, int &index, string str)
         decode(root->right, index, str);
 }
 
-__device__
+/*__device__
 void append(char *s, char c){
 	char *p = s;
 	int length = 0;
@@ -67,35 +67,51 @@ void append(char *s, char c){
 	}
 	s[length] = c;
 	s[length +1] = '\0';
+}*/
+__device__
+void append(char *s, char c, int count){
+
+	s[count] = c;
+	//s[length +1] = '\0';
 }
-
-__global__ void encode_kernel(char *tree_arr, int k, char *str,  char *encode_map)
+//__device__ int l = 0;
+//__device__ int r = 0;
+__global__ void encode_kernel(char *tree_arr, int k, int count,char *str,  char *encode_map)
 {
+cudaStream_t s1, s2;
+unsigned int flag = cudaStreamDefault;
+cudaStreamCreateWithFlags(&s1, flag);
+cudaStreamCreateWithFlags(&s2, flag);
 
-	if(threadIdx.x == 0)
-	{
-   int left = 2*k+1;
-	    int right = 2*k+2;
-	    if (tree_arr[left] == '$' && tree_arr[left] == '$')
+if(threadIdx.x == 0){
+    printf("Inside Kernel : %d\n",k);
+      int l = 2*k+1;
+	    int r = 2*k+2;
+
+	    if (tree_arr[l] == '$' && tree_arr[r] == '$')
 	    {
-		//        encode_map[tree_arr[k]*8] = str;
-		printf("\nCHAR:%d ENCODEDING:%d%d%d%d%d%d%d", str[7], str[6], str[5], str[4], str[3], str[2], str[1], str[0]);
+		     //encode_map[tree_arr[k]*8] = str;
+		    printf("\nCHAR:%c ENCODEDING:%s",tree_arr[k], str);
 	    }
-	    if (tree_arr[left] != '$'){
-        append(str,'0');
-        encode_kernel<<<1,1,0>>>(tree_arr, left, str, encode_map);
+	    if (tree_arr[l] != '$'){
+        append(str,'0', count);
+      //  printf("Appending: 0");
+        count++;
+        encode_kernel<<<1,1,0>>>(tree_arr, l,count, str, encode_map);
+        count--;
+        append(str,'\0',count);
         }
 
-	    if (tree_arr[right] != '$'){
-        append(str,'1');
-        encode_kernel<<<1,1,0>>>(tree_arr, right, str, encode_map);
+	    if (tree_arr[r] != '$'){
+      //  printf("Appending: 0");
+        append(str,'1',count);
+        count++;
+        encode_kernel<<<1,1,0>>>(tree_arr, r, count, str, encode_map);
+        count--;
+        append(str,'\0', count);
       }
-	}
-
-
+    }
 }
-
-
 
 
 
@@ -321,19 +337,19 @@ void buildHuffmanTree(string text)
 
     unordered_map<char, string> huffmanCode;
     //encode(root, "", huffmanCode);
-    int blocksPerGrid = (text.length() / 1024) + 1;
-    int threadsPerBlock = 1024;// FILL HERE
+    int blocksPerGrid = 1;//(text.length() / 1024) + 1;
+    int threadsPerBlock = 1;//1024;// FILL HERE
     printf("CUDA encode kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
 
-    encode_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_tree_arr, 0,d_str, d_encode_map);
+    encode_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_tree_arr, 0, 0, d_str, d_encode_map);
     cudaThreadSynchronize();
 
-    err = cudaMemcpy(h_encode_map, d_encode_map, table_size, cudaMemcpyDeviceToHost);
-    if (err != cudaSuccess)
+    //err = cudaMemcpy(h_encode_map, d_encode_map, table_size, cudaMemcpyDeviceToHost);
+    /*if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to copy encode map from device to host (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
-    }
+    }*/
     cudaThreadSynchronize();
     string str = "";
     generateEncodedString(huffmanCode, text, str);
