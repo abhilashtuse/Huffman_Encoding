@@ -78,39 +78,51 @@ void append(char *s, char c, int count){
 //__device__ int r = 0;
 __global__ void encode_kernel(char *tree_arr, int k, int count,char *str,  char *encode_map)
 {
-cudaStream_t s1, s2;
-unsigned int flag = cudaStreamDefault;
-cudaStreamCreateWithFlags(&s1, flag);
-cudaStreamCreateWithFlags(&s2, flag);
+
 
 if(threadIdx.x == 0){
-    printf("Inside Kernel : %d\n",k);
+  cudaStream_t s1, s2;
+  unsigned int flag = cudaStreamDefault;
+  cudaStreamCreateWithFlags(&s1, flag);
+  cudaStreamCreateWithFlags(&s2, flag);
+  //  printf("\nInside Kernel : %d and count : %d and string : %s",k, count, str);
       int l = 2*k+1;
 	    int r = 2*k+2;
 
 	    if (tree_arr[l] == '$' && tree_arr[r] == '$')
 	    {
 		     //encode_map[tree_arr[k]*8] = str;
-		    printf("\nCHAR:%c ENCODEDING:%s",tree_arr[k], str);
+		  printf("\nCHAR:%c ENCODEDING:%s",tree_arr[k], str);
+
+      //  printf("\nCHAR:%c", tree_arr[k]);
 	    }
+      //printf("\nCHAR:%c", tree_arr[k]);
 	    if (tree_arr[l] != '$'){
-        append(str,'0', count);
-      //  printf("Appending: 0");
-        count++;
-        encode_kernel<<<1,1,0>>>(tree_arr, l,count, str, encode_map);
-        count--;
-        append(str,'\0',count);
+        //if(count != -1)
+        str[count] = '0';
+        str[count+1] = '\0';
+        //append(str,'0', count);
+        //printf("Appending: 0");
+      //  printf("\nCHAR:%c LEFT ENCODEDING:%s",tree_arr[k], str);
+        encode_kernel<<<1,1,0, s1>>>(tree_arr, l,count + 1, str, encode_map);
+        //append(str,'\0',count);
+        cudaDeviceSynchronize();
+
         }
 
 	    if (tree_arr[r] != '$'){
-      //  printf("Appending: 0");
-        append(str,'1',count);
-        count++;
-        encode_kernel<<<1,1,0>>>(tree_arr, r, count, str, encode_map);
-        count--;
-        append(str,'\0', count);
+      //  printf("Appending: 1");
+      //  if(count != -1)
+        str[count] = '1';
+        str[count+1] = '\0';
+        //append(str,'1',count);
+        //printf("\nCHAR:%c RIGHT ENCODEDING:%s",tree_arr[k], str);
+
+        encode_kernel<<<1,1,0, s2>>>(tree_arr, r, count + 1, str, encode_map);
+        cudaDeviceSynchronize();
       }
     }
+    __syncthreads();
 }
 
 
@@ -292,8 +304,10 @@ void buildHuffmanTree(string text)
     char *h_arr = (char *)malloc(sizeof(char)*max_nodes);
     printLevelOrder(root, h_arr, treeHeight);
     printf("Tree converted to array :\n");
-    for (int i = 0; i < max_nodes; i++)
+    for (int i = 0; i < 15; i++){
+      //  h_arr[i] = 65 + i;
         printf("%c->", h_arr[i]);
+    }
 
     char *d_tree_arr = NULL;
     err = cudaMalloc((void**)&d_tree_arr, max_nodes);
@@ -340,7 +354,7 @@ void buildHuffmanTree(string text)
     int blocksPerGrid = 1;//(text.length() / 1024) + 1;
     int threadsPerBlock = 1;//1024;// FILL HERE
     printf("CUDA encode kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
-
+    cudaDeviceSetLimit(cudaLimitDevRuntimeSyncDepth, 9);
     encode_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_tree_arr, 0, 0, d_str, d_encode_map);
     cudaThreadSynchronize();
 
