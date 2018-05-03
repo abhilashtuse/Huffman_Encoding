@@ -4,20 +4,10 @@
 #include <cuda_runtime.h>
 
 #define TOTAL_CHARS 256
+#define MEM_WIDTH 256*8
 #define MAX_CODE_WIDTH 8 //pow(2, height(root)); //Worst case height of tree when all chars have same frequency
 
-// Function to allocate a new tree node
-Node* getNode(char ch, int freq, Node* left, Node* right)
-{
-    Node* node = new Node();
 
-    node->ch = ch;
-    node->freq = freq;
-    node->left = left;
-    node->right = right;
-
-    return node;
-}
 
 // Comparison object to be used to order the heap
 struct comp
@@ -67,7 +57,49 @@ void decode(Node* root, int &index, string str)
         decode(root->right, index, str);
 }
 
-__global__ void my_encode_kernel(char *encode_table, char *input_string, char *encoded_string, size_t input_size)
+__device__
+void append(char *s, char c){
+	char *p = s;
+	int length = 0;
+	while(*p != '\0'){
+		length++;
+	   	p++;
+	}
+	s[length] = c;
+	s[length +1] = '\0';
+}
+
+__global__ void encode_kernel(char *tree_arr, int k, char *str,  char *encode_map)
+{
+
+	if(threadIdx.x == 0)
+	{
+   int left = 2*k+1;
+	    int right = 2*k+2;
+	    if (tree_arr[left] == '$' && tree_arr[left] == '$')
+	    {
+		//        encode_map[tree_arr[k]*8] = str;
+		printf("\nCHAR:%d ENCODEDING:%d%d%d%d%d%d%d", str[7], str[6], str[5], str[4], str[3], str[2], str[1], str[0]);
+	    }
+	    if (tree_arr[left] != '$'){
+        append(str,'0');
+        encode_kernel<<<1,1,0>>>(tree_arr, left, str, encode_map);
+        }
+
+	    if (tree_arr[right] != '$'){
+        append(str,'1');
+        encode_kernel<<<1,1,0>>>(tree_arr, right, str, encode_map);
+      }
+	}
+
+
+}
+
+
+
+
+
+__global__ void my_concat_kernel(char *encode_table, char *input_string, char *encoded_string, size_t input_size)
 {
     //printf("In encode_kernel input string:%c\n", input_string[threadIdx.x]);
     int tid = threadIdx.x + (blockIdx.x * blockDim.x);
@@ -158,9 +190,9 @@ void generateEncodedString(unordered_map<char, string> huffmanCode, string &text
     cudaEventCreate(&stop);
 
 	cudaEventRecord(start);
-    //printf("Before my_encode_kernel");
-    my_encode_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_encode_table, d_input_string, d_encoded_string, text.length());
-    //printf("After my_encode_kernel");
+    //printf("Before my_concat_kernel");
+    my_concat_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_encode_table, d_input_string, d_encoded_string, text.length());
+    //printf("After my_concat_kernel");
 	cudaEventRecord(stop);
 
 	cudaEventSynchronize(stop);
@@ -201,6 +233,7 @@ void generateEncodedString(unordered_map<char, string> huffmanCode, string &text
 // Builds Huffman Tree and decode given input text
 void buildHuffmanTree(string text)
 {
+    cudaError_t err = cudaSuccess;
     int nodes = 0;
     // count frequency of appearance of each character and store it in a map
     unordered_map<char, int> freq;
@@ -239,15 +272,69 @@ void buildHuffmanTree(string text)
     // root stores pointer to root of Huffman Tree
     Node* root = pq.top();
     int treeHeight = height(root);
-    int max_nodes = pow(2, treeHeight);
+    int max_nodes = pow(2, 9) - 1;
     char *h_arr = (char *)malloc(sizeof(char)*max_nodes);
     printLevelOrder(root, h_arr, treeHeight);
     printf("Tree converted to array :\n");
     for (int i = 0; i < max_nodes; i++)
         printf("%c->", h_arr[i]);
 
+    char *d_tree_arr = NULL;
+    err = cudaMalloc((void**)&d_tree_arr, max_nodes);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device tree array (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    char *d_str = NULL;
+    err = cudaMalloc((void**)&d_str, MAX_CODE_WIDTH * sizeof(char));
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device string(str) (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+    cudaMemset(d_str, '\0', MAX_CODE_WIDTH);
+    err = cudaMemcpy(d_tree_arr, h_arr, max_nodes, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy tree array from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    int table_size = TOTAL_CHARS * MAX_CODE_WIDTH * sizeof(char);
+    char *h_encode_map = (char*) malloc(table_size);
+    if (h_encode_map == NULL)
+    {
+        fprintf(stderr, "Failed to allocate host encode map (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+    memset(h_encode_map, 0, table_size);
+
+    char *d_encode_map = NULL;
+    err = cudaMalloc((void**)&d_encode_map, table_size);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device encode map (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
     unordered_map<char, string> huffmanCode;
-    encode(root, "", huffmanCode);
+    //encode(root, "", huffmanCode);
+    int blocksPerGrid = (text.length() / 1024) + 1;
+    int threadsPerBlock = 1024;// FILL HERE
+    printf("CUDA encode kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
+
+    encode_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_tree_arr, 0,d_str, d_encode_map);
+    cudaThreadSynchronize();
+
+    err = cudaMemcpy(h_encode_map, d_encode_map, table_size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy encode map from device to host (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+    cudaThreadSynchronize();
     string str = "";
     generateEncodedString(huffmanCode, text, str);
     cout << "\nOriginal string was :\n" << text << '\n';
