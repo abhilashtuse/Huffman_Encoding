@@ -291,7 +291,6 @@ void buildHuffmanTree(string text)
         printf("%c->", h_arr[i]);
     }
 
-
     char *d_str = NULL;
     err = cudaMalloc((void**)&d_str, MAX_CODE_WIDTH * sizeof(char));
     if (err != cudaSuccess)
@@ -375,10 +374,14 @@ void buildHuffmanTree(string text)
 #endif
 
     cudaThreadSynchronize();
-    string str = "";
-    generateEncodedString(huffmanCode, text, str);
+    //generateEncodedString(huffmanCode, text, str);
     cout << "\nOriginal string was :\n" << text << '\n';
     // print encoded string
+    string str = "";
+    for (char ch: text) {
+        for (int i = 0; h_encode_map[(ch * MAX_CODE_WIDTH) + i] != '\0'; i++)
+            str += h_encode_map[ch * MAX_CODE_WIDTH + i];
+    }
     cout << "\nEncoded string is :\n" << str << '\n';
 
     // traverse the Huffman Tree again and this time
@@ -388,4 +391,5 @@ void buildHuffmanTree(string text)
     while (index < (int)str.size() - 2) {
         decode(root, index, str);
     }
+    cout << endl;
 }
