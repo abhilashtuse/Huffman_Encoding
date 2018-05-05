@@ -19,8 +19,8 @@ all: main
 huffman: huffman.o
 		$(CC) $(INC) $(DYNCUDAFLAGS) $(CCFLAGS) -o huffman.o $(LIB)
 
-main: main.o huffman.o histogram.o binary_tree.o $(DEP)
-		$(CC) $(INC) $(DYNCUDAFLAGS) $(CCFLAGS) -o main main.o huffman.o histogram.o binary_tree.o $(LIB)
+main: main.o huffman.o histogram.o binary_tree.o gpu_encode.o gpu_decode.o $(DEP)
+		$(CC) $(INC) $(DYNCUDAFLAGS) $(CCFLAGS) -o main main.o huffman.o histogram.o binary_tree.o gpu_encode.o gpu_decode.o $(LIB)
 
 .cpp.o:
 		$(CC) $(INC) $(NVCCFLAGS) $(CCFLAGS) $(DEF) -c $< -o $@
@@ -30,4 +30,3 @@ main: main.o huffman.o histogram.o binary_tree.o $(DEP)
 
 clean:
 		rm -f *.o main
-

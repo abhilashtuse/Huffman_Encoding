@@ -36,12 +36,9 @@ __global__ void histo_kernel(char *buffer, long size, unsigned int *histo)
 	}
 }
 
-void calculateFrequencies(string &text, unordered_map<char, int> &freq) {
+void calculateFrequencies(char *char_array, int input_str_length, unordered_map<char, int> &freq) {
     //cout << "input:" << text << endl;
     cudaError_t err = cudaSuccess;
-    int size = TOTAL_CHARS * sizeof(int);
-    char char_array[text.length()];
-    strcpy(char_array, text.c_str());
 
 	// Allocate the host input matrix h_A
     unsigned int *h_histo = (unsigned int *)malloc(TOTAL_CHARS * sizeof(int));
@@ -59,7 +56,7 @@ void calculateFrequencies(string &text, unordered_map<char, int> &freq) {
       h_histo[i] = 0;
     }
     unsigned int *d_histo =NULL;
-    err = cudaMalloc((void**)&d_histo, size);
+    err = cudaMalloc((void**)&d_histo, input_str_length * sizeof(int));
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to allocate device matrix B (error code %s)!\n", cudaGetErrorString(err));
@@ -68,19 +65,19 @@ void calculateFrequencies(string &text, unordered_map<char, int> &freq) {
 
     //Allocate the device output matrix
     char *d_char_array = NULL;
-    err = cudaMalloc((void**)&d_char_array, text.length()* sizeof(char));
+    err = cudaMalloc((void**)&d_char_array, input_str_length* sizeof(char));
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to allocate device matrix C (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
-    err = cudaMemcpy(d_histo, h_histo, size,cudaMemcpyHostToDevice);// FILL HERE
+    err = cudaMemcpy(d_histo, h_histo, input_str_length * sizeof(int),cudaMemcpyHostToDevice);// FILL HERE
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to copy matrix B from host to device (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
-	err = cudaMemcpy(d_char_array, char_array, text.length() * sizeof(char),cudaMemcpyHostToDevice);// FILL HERE
+	err = cudaMemcpy(d_char_array, char_array, input_str_length * sizeof(char),cudaMemcpyHostToDevice);// FILL HERE
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to copy matrix B from host to device (error code %s)!\n", 	  cudaGetErrorString(err));
@@ -97,7 +94,7 @@ void calculateFrequencies(string &text, unordered_map<char, int> &freq) {
     cudaEventCreate(&stop);
 
 	cudaEventRecord(start);
-	histo_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_char_array, text.length(), d_histo);
+	histo_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_char_array, input_str_length, d_histo);
 	cudaEventRecord(stop);
 
 	cudaEventSynchronize(stop);
@@ -121,7 +118,7 @@ void calculateFrequencies(string &text, unordered_map<char, int> &freq) {
     // Copy the device result matrix in device memory to the host result matrix
     // in host memory.
     printf("Copy output data from the CUDA device to the host memory\n");
-    err = cudaMemcpy(h_histo, d_histo, size, cudaMemcpyDeviceToHost);
+    err = cudaMemcpy(h_histo, d_histo, input_str_length * sizeof(int), cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to copy matrix C from device to host (error code %s)!\n", cudaGetErrorString(err));

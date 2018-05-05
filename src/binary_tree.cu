@@ -38,7 +38,7 @@ Node* getNode(char ch, int freq, Node* left, Node* right)
 }
 
 
-void printLevelOrder(Node *root, char *arr, int treeHeight)
+void convertTreeToArray(Node *root, char *arr, int treeHeight)
 {
     // Base Case
     if (root == NULL)  return;

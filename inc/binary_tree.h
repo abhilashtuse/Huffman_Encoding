@@ -11,6 +11,6 @@ struct Node
 
 Node* getNode(char ch, int freq, Node* left, Node* right);
 int height(Node* node);
-void printLevelOrder(Node *root, char *arr, int height);
+void convertTreeToArray(Node *root, char *arr, int height);
 
 #endif /* BINARY_TREE_H */
