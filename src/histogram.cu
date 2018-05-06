@@ -18,7 +18,8 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
     cudaError_t err = cudaSuccess;
 
 	// Allocate the host input matrix h_A
-    unsigned int *h_histo = (unsigned int *)malloc(TOTAL_CHARS * sizeof(int));
+    int histo_size = TOTAL_CHARS * sizeof(int);
+    unsigned int *h_histo = (unsigned int *)malloc(histo_size);
 
     // Verify that allocations succeeded
     if (h_histo == NULL)
@@ -33,7 +34,7 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
       h_histo[i] = 0;
     }
     unsigned int *d_histo =NULL;
-    err = cudaMalloc((void**)&d_histo, input_str_length * sizeof(int));
+    err = cudaMalloc((void**)&d_histo, histo_size * sizeof(int));
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to allocate device matrix B (error code %s)!\n", cudaGetErrorString(err));
@@ -48,7 +49,7 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
         fprintf(stderr, "Failed to allocate device matrix C (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
-    err = cudaMemcpy(d_histo, h_histo, input_str_length * sizeof(int),cudaMemcpyHostToDevice);// FILL HERE
+    err = cudaMemcpy(d_histo, h_histo, histo_size * sizeof(int),cudaMemcpyHostToDevice);// FILL HERE
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to copy matrix B from host to device (error code %s)!\n", cudaGetErrorString(err));
@@ -95,7 +96,7 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
     // Copy the device result matrix in device memory to the host result matrix
     // in host memory.
     printf("Copy output data from the CUDA device to the host memory\n");
-    err = cudaMemcpy(h_histo, d_histo, input_str_length * sizeof(int), cudaMemcpyDeviceToHost);
+    err = cudaMemcpy(h_histo, d_histo, histo_size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to copy matrix C from device to host (error code %s)!\n", cudaGetErrorString(err));
@@ -106,7 +107,7 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
     //Testing
     for(int i = 0; i < TOTAL_CHARS; i++){
 		if (h_histo[i] != 0) {
-			//printf("\nindex: %c   Frequency: %d", i, h_histo[i]);
+			printf("\nindex: %c   Frequency: %d", i, h_histo[i]);
 			freq.insert( std::pair<char,int>(i,h_histo[i]));
 		}
     }
