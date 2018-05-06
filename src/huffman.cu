@@ -76,10 +76,8 @@ void buildHuffmanTree(string text)
         printf("%c->", h_tree_arr[i]);
     }*/
 
-    cout << endl;
-
-    gpu_encode(h_tree_arr, h_tree_arr_length, input_str_array, text.length());
-
+    //cout << endl;
+    gpu_encode(h_tree_arr, h_tree_arr_length, input_str_array, text.length(), root);
     //gpu_decode(text.length());
 
     free(h_tree_arr);
