@@ -1,17 +1,21 @@
 #include "histogram.h"
 
+#define TEN_KB 10250
 #define TOTAL_CHARS 256
 
-__global__ void histo_kernel(char *buffer, long size, unsigned int *histo)
+__constant__ char d_input_string_const[TEN_KB];
+
+__global__ void histo_kernel(long size, unsigned int *histo)
 {
 	int i = threadIdx.x + blockIdx.x * blockDim.x;
 	int stride = blockDim.x * gridDim.x;
 	while(i < size) {
-		atomicAdd( &(histo[(buffer[i])]), 1);
+		atomicAdd( &(histo[(d_input_string_const[i])]), 1);
 		i += stride;
 	}
 	__syncthreads();
 }
+
 
 void calculateFrequencies(char *char_array, int input_str_length, unordered_map<char, int> &freq) {
     //cout << "input:" << text << endl;
@@ -41,24 +45,10 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
         exit(EXIT_FAILURE);
     }
 
-    //Allocate the device output matrix
-    char *d_char_array = NULL;
-    err = cudaMalloc((void**)&d_char_array, input_str_length* sizeof(char));
+	err = cudaMemcpyToSymbol(d_input_string_const, char_array, input_str_length * sizeof(char));
     if (err != cudaSuccess)
     {
-        fprintf(stderr, "Failed to allocate device matrix C (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-    err = cudaMemcpy(d_histo, h_histo, histo_size * sizeof(int),cudaMemcpyHostToDevice);// FILL HERE
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy matrix B from host to device (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-	err = cudaMemcpy(d_char_array, char_array, input_str_length * sizeof(char),cudaMemcpyHostToDevice);// FILL HERE
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy matrix B from host to device (error code %s)!\n", 	  cudaGetErrorString(err));
+        fprintf(stderr, "Failed to copy input string from host to device (error code %s)!\n", 	  cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
@@ -72,7 +62,7 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
     cudaEventCreate(&stop);
 
 	cudaEventRecord(start);
-	histo_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_char_array, input_str_length, d_histo);
+	histo_kernel<<<blocksPerGrid, threadsPerBlock>>>(input_str_length, d_histo);
 	cudaEventRecord(stop);
 
 	cudaEventSynchronize(stop);

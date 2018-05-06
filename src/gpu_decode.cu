@@ -1,5 +1,9 @@
 #include <iostream>
 #include <fstream>
+#include <string>
+#include "binary_tree.h"
+
+using namespace std;
 
 extern __constant__ char d_tree_arr_const[];
 
@@ -96,4 +100,25 @@ void gpu_decode(int input_str_length) {
     //cudaFree(d_encode_map);
     //cudaFree(d_input_string);
     cudaFree(d_final_str);
+}
+
+void cpu_decode(Node* root, int &index, string str)
+{
+    if (root == nullptr) {
+        return;
+    }
+
+    // found a leaf node
+    if (!root->left && !root->right)
+    {
+        cout << root->ch;
+        return;
+    }
+
+    index++;
+
+    if (str[index] =='0')
+        cpu_decode(root->left, index, str);
+    else
+        cpu_decode(root->right, index, str);
 }

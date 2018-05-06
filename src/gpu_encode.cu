@@ -11,7 +11,7 @@ using namespace std;
 #define MAX_CODE_WIDTH 12 //pow(2, height(root)); //Worst case height of tree when all chars have same frequency
 
 __constant__ char d_tree_arr_const[TEN_KB]; // Device side tree in array form
-__constant__ char d_input_string_const[TEN_KB];
+extern __constant__ char d_input_string_const[TEN_KB];
 __constant__ char d_map_table[TOTAL_CHARS * MAX_CODE_WIDTH];
 __global__ void encode_kernel(char *d_map_table_test, int partition_size, int partition_index)
 {
@@ -138,14 +138,15 @@ void gpu_encode(char *h_tree_arr, int h_tree_arr_length, char *input_str_array, 
     h_map_table = (char*) malloc(table_size);
     unordered_map<char, string> huffmanCode;
     cpu_encode(root, "", huffmanCode);//gpu_encode(h_tree_arr, h_tree_arr_length, input_str_array, text.length());
-    //cout << "\nHuffman Codes are :\n" << '\n';
+
+    /*cout << "\nHuffman Codes are :\n" << '\n';
     for (auto pair: huffmanCode) {
-        //cout << pair.first << " " << pair.second << '\n';
+        cout << pair.first << " " << pair.second << '\n';
         for (int j = 0; j < MAX_CODE_WIDTH; j++) {
             if (j < pair.second.length())
                 h_map_table[pair.first * MAX_CODE_WIDTH + j] = pair.second[j];
         }
-        //cout << endl;
+        cout << endl;
     }
 
     err = cudaMemcpyToSymbol(d_map_table, h_map_table, table_size);
@@ -153,6 +154,6 @@ void gpu_encode(char *h_tree_arr, int h_tree_arr_length, char *input_str_array, 
     {
         fprintf(stderr, "Failed to copy encode table from host to device (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
-    }
-    generateEncodedString(input_str_array_length);
+    }*/
+    //generateEncodedString(input_str_array_length);
 }
