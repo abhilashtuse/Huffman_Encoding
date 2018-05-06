@@ -71,15 +71,16 @@ void buildHuffmanTree(string text)
 
     convertTreeToArray(root, h_tree_arr, treeHeight);
     printf("Tree converted to array :\n");
-    for (int i = 0; i < 15; i++){
+    /*for (int i = 0; i < 15; i++){
       //  h_tree_arr[i] = 65 + i;
         printf("%c->", h_tree_arr[i]);
-    }
+    }*/
+
     cout << endl;
 
     gpu_encode(h_tree_arr, h_tree_arr_length, input_str_array, text.length());
 
-    gpu_decode(text.length());
+    //gpu_decode(text.length());
 
     free(h_tree_arr);
 }

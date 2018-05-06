@@ -65,10 +65,12 @@ void convertTreeToArray(Node *root, char *arr, int treeHeight)
         {
             Node *node = q.front();
             if (node->ch == '\0') {
-               printf("* "); arr[ind] = '*'; ind++;
+               //printf("* ");
+               arr[ind] = '*'; ind++;
             }
             else {
-               printf("%c ", node->ch); arr[ind] = node->ch; ind++;
+               //printf("%c ", node->ch);
+                arr[ind] = node->ch; ind++;
             }
             q.pop();
             if (node->left != NULL)
@@ -82,7 +84,7 @@ void convertTreeToArray(Node *root, char *arr, int treeHeight)
 
             nodeCount--;
         }
-        cout << endl;
+      //  cout << endl;
         counter++;
     }
 }

@@ -12,7 +12,7 @@ endif
 
 CCFLAGS := -std=c++11
 NVCCFLAGS   := -lineinfo -arch=sm_53 --ptxas-options=-v -g
-DYNCUDAFLAGS := -arch=compute_35 -rdc=true -lcudadevrt
+DYNCUDAFLAGS := -arch=compute_35 -rdc=true -lcudadevrt -g
 
 all: main
 
