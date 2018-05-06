@@ -138,14 +138,14 @@ void gpu_encode(char *h_tree_arr, int h_tree_arr_length, char *input_str_array, 
     h_map_table = (char*) malloc(table_size);
     unordered_map<char, string> huffmanCode;
     cpu_encode(root, "", huffmanCode);//gpu_encode(h_tree_arr, h_tree_arr_length, input_str_array, text.length());
-    cout << "\nHuffman Codes are :\n" << '\n';
+    //cout << "\nHuffman Codes are :\n" << '\n';
     for (auto pair: huffmanCode) {
-        cout << pair.first << " " << pair.second << '\n';
+        //cout << pair.first << " " << pair.second << '\n';
         for (int j = 0; j < MAX_CODE_WIDTH; j++) {
             if (j < pair.second.length())
                 h_map_table[pair.first * MAX_CODE_WIDTH + j] = pair.second[j];
         }
-        cout << endl;
+        //cout << endl;
     }
 
     err = cudaMemcpyToSymbol(d_map_table, h_map_table, table_size);

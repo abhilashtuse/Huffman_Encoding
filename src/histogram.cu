@@ -4,36 +4,13 @@
 
 __global__ void histo_kernel(char *buffer, long size, unsigned int *histo)
 {
-
-	//printf("\ninside histogram kernel function");
-	__shared__ unsigned int histo_private[7];
-	if (threadIdx.x < 7)
-	{
-	histo_private[threadIdx.x] = 0;
-	//printf("\nMake private copies of histogram");
-	}
-	__syncthreads();
-
 	int i = threadIdx.x + blockIdx.x * blockDim.x;
-
-	__syncthreads();
-	//printf("\nThread id:%d", i);
-	// stride is total number of threads
-
 	int stride = blockDim.x * gridDim.x;
-	//printf("\nStride :%d", stride);
 	while(i < size) {
-		//printf("\n Filing histogram");
-		//65 because we start with 'A'
 		atomicAdd( &(histo[(buffer[i])]), 1);
-
 		i += stride;
 	}
 	__syncthreads();
-
-	if (threadIdx.x < 7) {
-		atomicAdd(&(histo[threadIdx.x]), histo_private[threadIdx.x] );
-	}
 }
 
 void calculateFrequencies(char *char_array, int input_str_length, unordered_map<char, int> &freq) {
@@ -128,9 +105,10 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
 
     //Testing
     for(int i = 0; i < TOTAL_CHARS; i++){
-      	//printf("\nindex: %d   Frequency: %d", i, h_histo[i]);
-		if (h_histo[i] != 0)
+		if (h_histo[i] != 0) {
+			//printf("\nindex: %c   Frequency: %d", i, h_histo[i]);
 			freq.insert( std::pair<char,int>(i,h_histo[i]));
+		}
     }
 
     cudaFree(d_histo);
