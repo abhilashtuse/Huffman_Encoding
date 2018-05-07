@@ -80,6 +80,7 @@ void buildHuffmanTree(string text)
     gpu_encode(h_tree_arr, h_tree_arr_length, input_str_array, text.length(), root);
 
     //Below is test code for histogram with cpu encode and decode
+#if 0
     unordered_map<char, string> huffmanCode;
     cpu_encode(root, "", huffmanCode);//gpu_encode(h_tree_arr, h_tree_arr_length, input_str_array, text.length());
 
@@ -93,6 +94,7 @@ void buildHuffmanTree(string text)
     while (index < (int)str.size() - 2) {
         cpu_decode(root, index, str);
     }
+#endif
     //gpu_decode(text.length());
 
     free(h_tree_arr);

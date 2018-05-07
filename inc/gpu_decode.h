@@ -1,5 +1,8 @@
 #ifndef GPU_DECODE_H
 #define GPU_DECODE_H
+#include <string>
+
+using namespace std;
 
 void gpu_decode(int input_str_length);
 __device__ void append(char *s, char c, int position);

@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include "binary_tree.h"
+#include "gpu_decode.h"
 
 using namespace std;
 
@@ -47,8 +48,8 @@ __global__ void encode_kernel(char *d_map_table_test, int partition_size, int pa
   __syncthreads();
 }
 
-__device__ char d_encoded_string[TEN_KB * MAX_CODE_WIDTH];
-__global__ void generateEncodedStringKernel()
+//__device__ char d_encoded_string[TEN_KB * MAX_CODE_WIDTH];
+__global__ void generateEncodedStringKernel(char *d_encoded_string)
 {
     int tid = threadIdx.x + (blockIdx.x * blockDim.x);
 
@@ -60,39 +61,86 @@ __global__ void generateEncodedStringKernel()
     __syncthreads();
 #if 0
     if (tid == 0) {
-        printf("Final encoded string:\n");
+        printf("Final encoded string in kernel:\n");
         for (int j = 0; j < 50; j++) {
             //printf("\nchar: %c code:", d_input_string_const[j]);
             for (int i = 0; i < MAX_CODE_WIDTH; i++) {
                 if(d_encoded_string[j * MAX_CODE_WIDTH + i] == '0' || d_encoded_string[j * MAX_CODE_WIDTH + i] == '1' )
-                printf("%c", d_encoded_string[j * MAX_CODE_WIDTH + i]);
+                    printf("%c", d_encoded_string[j * MAX_CODE_WIDTH + i]);
             }
         }
     }
 #endif
 }
 
-
-void generateEncodedString(int input_str_array_length)
+void generateEncodedString(int input_str_array_length, Node *root)
 {
-  int blocksPerGrid = (input_str_array_length / 1024) + 1;
-  int threadsPerBlock = 1024;// FILL HERE
-  printf("CUDA generateEncodedStringKernel kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-  cudaEventRecord(start);
+    cudaError_t err = cudaSuccess;
+    int encode_str_size = TEN_KB * MAX_CODE_WIDTH * sizeof(char);
+    char *h_encoded_string = (char *)malloc(encode_str_size);
 
-  generateEncodedStringKernel<<<blocksPerGrid, threadsPerBlock>>>();
+    // Verify that allocations succeeded
+    if (h_encoded_string == NULL)
+    {
+      fprintf(stderr, "Failed to allocate host histograms!\n");
+      exit(EXIT_FAILURE);
+    }
+    char *d_encoded_string = NULL;
+    err = cudaMalloc((void**)&d_encoded_string, encode_str_size);
+    if (err != cudaSuccess)
+    {
+      fprintf(stderr, "Failed to allocate device encoded string (error code %s)!\n", cudaGetErrorString(err));
+      exit(EXIT_FAILURE);
+    }
+    int blocksPerGrid = (input_str_array_length / 1024) + 1;
+    int threadsPerBlock = 1024;// FILL HERE
+    printf("CUDA generateEncodedStringKernel kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
 
-  cudaEventRecord(stop);
-  cudaEventSynchronize(stop);
-  float elapsed = 0;
-  cudaEventElapsedTime(&elapsed, start, stop);
-  printf("The elapsed time for generateEncodedString kernal exexution is %.2f ms\n", elapsed);
-  cudaEventDestroy (start);
-  cudaEventDestroy (stop);
-  cudaThreadSynchronize();
+    generateEncodedStringKernel<<<blocksPerGrid, threadsPerBlock>>>(d_encoded_string);
+
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    float elapsed = 0;
+    cudaEventElapsedTime(&elapsed, start, stop);
+    printf("The elapsed time for generateEncodedString kernal exexution is %.2f ms\n", elapsed);
+    cudaEventDestroy (start);
+    cudaEventDestroy (stop);
+    cudaThreadSynchronize();
+    err = cudaMemcpy(h_encoded_string, d_encoded_string, encode_str_size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess)
+    {
+      fprintf(stderr, "Failed to copy final encoded str from device to host (error code %s)!\n", cudaGetErrorString(err));
+      exit(EXIT_FAILURE);
+    }
+    cudaThreadSynchronize();
+    #if 0
+    printf("Final encoded string in cpu:\n");
+    for (int j = 0; j < 50; j++) {
+      for (int i = 0; i < MAX_CODE_WIDTH; i++) {
+          if(h_encoded_string[j * MAX_CODE_WIDTH + i] == '0' || h_encoded_string[j * MAX_CODE_WIDTH + i] == '1' )
+          printf("%c", h_encoded_string[j * MAX_CODE_WIDTH + i]);
+      }
+    }
+    #endif
+
+    // generateEncodedString Testing with CPU decode
+    string final_encode_str = "";
+    for (int j = 0; j < input_str_array_length; j++) {
+      for (int i = 0; i < MAX_CODE_WIDTH; i++) {
+          if(h_encoded_string[j * MAX_CODE_WIDTH + i] == '0' || h_encoded_string[j * MAX_CODE_WIDTH + i] == '1')
+            final_encode_str += h_encoded_string[j * MAX_CODE_WIDTH + i];
+      }
+    }
+
+    int index = -1;
+    cout << "\nDecoded string is: \n";
+    while (index < (int)final_encode_str.size() - 2) {
+        cpu_decode(root, index, final_encode_str);
+    }
 }
 
 // traverse the Huffman Tree and store Huffman Codes
@@ -139,7 +187,7 @@ void gpu_encode(char *h_tree_arr, int h_tree_arr_length, char *input_str_array, 
     unordered_map<char, string> huffmanCode;
     cpu_encode(root, "", huffmanCode);//gpu_encode(h_tree_arr, h_tree_arr_length, input_str_array, text.length());
 
-    /*cout << "\nHuffman Codes are :\n" << '\n';
+    cout << "\nHuffman Codes are :\n" << '\n';
     for (auto pair: huffmanCode) {
         cout << pair.first << " " << pair.second << '\n';
         for (int j = 0; j < MAX_CODE_WIDTH; j++) {
@@ -154,6 +202,6 @@ void gpu_encode(char *h_tree_arr, int h_tree_arr_length, char *input_str_array, 
     {
         fprintf(stderr, "Failed to copy encode table from host to device (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
-    }*/
-    //generateEncodedString(input_str_array_length);
+    }
+    generateEncodedString(input_str_array_length, root);
 }
