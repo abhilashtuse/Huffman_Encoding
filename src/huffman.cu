@@ -70,14 +70,14 @@ void buildHuffmanTree(string text)
     memset(h_tree_arr, '\0', sizeof(char) * h_tree_arr_length);
 
     convertTreeToArray(root, h_tree_arr, treeHeight);
-    printf("Tree converted to array :\n");
-    /*for (int i = 0; i < 15; i++){
+    /*printf("Tree converted to array h_tree_arr_length:%d:\n", h_tree_arr_length);
+    for (int i = 0; i < h_tree_arr_length; i++){
       //  h_tree_arr[i] = 65 + i;
         printf("%c->", h_tree_arr[i]);
     }*/
 
     //cout << endl;
-    gpu_encode(h_tree_arr, h_tree_arr_length, input_str_array, text.length(), root);
+    gpu_encode(input_str_array, text.length(), root);
 
     //Below is test code for histogram with cpu encode and decode
 #if 0
@@ -95,7 +95,7 @@ void buildHuffmanTree(string text)
         cpu_decode(root, index, str);
     }
 #endif
-    //gpu_decode(text.length());
+    gpu_decode(h_tree_arr, h_tree_arr_length, text.length());
 
     free(h_tree_arr);
 }

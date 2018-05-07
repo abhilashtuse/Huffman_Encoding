@@ -41,7 +41,7 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
     err = cudaMalloc((void**)&d_histo, histo_size * sizeof(int));
     if (err != cudaSuccess)
     {
-        fprintf(stderr, "Failed to allocate device matrix B (error code %s)!\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to allocate device histo array (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
