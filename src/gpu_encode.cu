@@ -11,17 +11,17 @@ using namespace std;
 #define TOTAL_CHARS 256
 #define MAX_CODE_WIDTH 12 //pow(2, height(root)); //Worst case height of tree when all chars have same frequency
 
-//__constant__ char d_tree_arr_const[TEN_KB*2]; // Device side tree in array form
+__constant__ char d_tree_arr_const[TEN_KB]; // Device side tree in array form
 extern __constant__ char d_input_string_const[TEN_KB];
 __constant__ char d_map_table[TOTAL_CHARS * MAX_CODE_WIDTH];
-__global__ void encode_kernel(char * d_tree_arr, char *d_map_table_test, int partition_size, int partition_index)
+__global__ void encode_kernel(char *d_map_table_test, int partition_size, int partition_index)
 {
   int tid = threadIdx.x + (blockIdx.x * blockDim.x);
   int j = 0;
   char str[MAX_CODE_WIDTH];
-  char temp = d_tree_arr[tid + partition_size * partition_index];
+  char temp = d_tree_arr_const[tid + partition_size * partition_index];
   //memset(str,'\0', MAX_CODE_WIDTH);
-  //printf("\ntid: %d node:%c", threadIdx.x, d_tree_arr[threadIdx.x]);
+  //printf("\ntid: %d node:%c", threadIdx.x, d_tree_arr_const[threadIdx.x]);
   //if(temp == 'e'){
     if(temp != '$' && temp != '*') {
       for(int i = tid ;i >0 ;) {
@@ -48,9 +48,8 @@ __global__ void encode_kernel(char * d_tree_arr, char *d_map_table_test, int par
   __syncthreads();
 }
 
-__device__ char d_encoded_string[TEN_KB * MAX_CODE_WIDTH];
-//__global__ void generateEncodedStringKernel(char *d_encoded_string)
-__global__ void generateEncodedStringKernel()
+//__device__ char d_encoded_string[TEN_KB * MAX_CODE_WIDTH];
+__global__ void generateEncodedStringKernel(char *d_encoded_string)
 {
     int tid = threadIdx.x + (blockIdx.x * blockDim.x);
 
@@ -76,7 +75,7 @@ __global__ void generateEncodedStringKernel()
 
 void generateEncodedString(int input_str_array_length, Node *root)
 {
-    /*cudaError_t err = cudaSuccess;
+    cudaError_t err = cudaSuccess;
     int encode_str_size = TEN_KB * MAX_CODE_WIDTH * sizeof(char);
     char *h_encoded_string = (char *)malloc(encode_str_size);
 
@@ -92,7 +91,7 @@ void generateEncodedString(int input_str_array_length, Node *root)
     {
       fprintf(stderr, "Failed to allocate device encoded string (error code %s)!\n", cudaGetErrorString(err));
       exit(EXIT_FAILURE);
-    }*/
+    }
     int blocksPerGrid = (input_str_array_length / 1024) + 1;
     int threadsPerBlock = 1024;// FILL HERE
     printf("CUDA generateEncodedStringKernel kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
@@ -101,8 +100,8 @@ void generateEncodedString(int input_str_array_length, Node *root)
     cudaEventCreate(&stop);
     cudaEventRecord(start);
 
-    //generateEncodedStringKernel<<<blocksPerGrid, threadsPerBlock>>>(d_encoded_string);
-    generateEncodedStringKernel<<<blocksPerGrid, threadsPerBlock>>>();
+    generateEncodedStringKernel<<<blocksPerGrid, threadsPerBlock>>>(d_encoded_string);
+
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     float elapsed = 0;
@@ -111,13 +110,13 @@ void generateEncodedString(int input_str_array_length, Node *root)
     cudaEventDestroy (start);
     cudaEventDestroy (stop);
     cudaThreadSynchronize();
-    /*err = cudaMemcpy(h_encoded_string, d_encoded_string, encode_str_size, cudaMemcpyDeviceToHost);
+    err = cudaMemcpy(h_encoded_string, d_encoded_string, encode_str_size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
       fprintf(stderr, "Failed to copy final encoded str from device to host (error code %s)!\n", cudaGetErrorString(err));
       exit(EXIT_FAILURE);
     }
-    cudaThreadSynchronize();*/
+    cudaThreadSynchronize();
     #if 0
     printf("Final encoded string in cpu:\n");
     for (int j = 0; j < 50; j++) {
@@ -129,8 +128,7 @@ void generateEncodedString(int input_str_array_length, Node *root)
     #endif
 
     // generateEncodedString Testing with CPU decode
-
-    /*string final_encode_str = "";
+    string final_encode_str = "";
     for (int j = 0; j < input_str_array_length; j++) {
       for (int i = 0; i < MAX_CODE_WIDTH; i++) {
           if(h_encoded_string[j * MAX_CODE_WIDTH + i] == '0' || h_encoded_string[j * MAX_CODE_WIDTH + i] == '1')
@@ -142,7 +140,7 @@ void generateEncodedString(int input_str_array_length, Node *root)
     cout << "\nDecoded string is: \n";
     while (index < (int)final_encode_str.size() - 2) {
         cpu_decode(root, index, final_encode_str);
-    }*/
+    }
 }
 
 // traverse the Huffman Tree and store Huffman Codes
@@ -161,8 +159,21 @@ void cpu_encode(Node* root, string str, unordered_map<char, string> &huffmanCode
     cpu_encode(root->right, str + "1", huffmanCode);
 }
 
-void gpu_encode(char *input_str_array, int input_str_array_length, Node *root) {
+void gpu_encode(char *h_tree_arr, int h_tree_arr_length, char *input_str_array, int input_str_array_length, Node *root) {
     cudaError_t err = cudaSuccess;
+    //Create Streams
+    int numStreams = h_tree_arr_length/2048 + 1;
+    cudaStream_t stream[numStreams];
+    for (int i=0; i<numStreams; i++){
+       cudaStreamCreate(&stream[i]);
+    }
+
+    /*err = cudaMemcpyToSymbol(d_tree_arr_const, h_tree_arr, h_tree_arr_length * sizeof(char));
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy tree array from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }*/
     err = cudaMemcpyToSymbol(d_input_string_const, input_str_array, input_str_array_length );
     if (err != cudaSuccess)
     {
@@ -176,14 +187,14 @@ void gpu_encode(char *input_str_array, int input_str_array_length, Node *root) {
     unordered_map<char, string> huffmanCode;
     cpu_encode(root, "", huffmanCode);//gpu_encode(h_tree_arr, h_tree_arr_length, input_str_array, text.length());
 
-    //cout << "\nHuffman Codes are :\n" << '\n';
+    cout << "\nHuffman Codes are :\n" << '\n';
     for (auto pair: huffmanCode) {
-        //cout << pair.first << " " << pair.second << '\n';
+        cout << pair.first << " " << pair.second << '\n';
         for (int j = 0; j < MAX_CODE_WIDTH; j++) {
             if (j < pair.second.length())
                 h_map_table[pair.first * MAX_CODE_WIDTH + j] = pair.second[j];
         }
-        //cout << endl;
+        cout << endl;
     }
 
     err = cudaMemcpyToSymbol(d_map_table, h_map_table, table_size);
