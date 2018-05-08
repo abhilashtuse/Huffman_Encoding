@@ -45,7 +45,7 @@ void decode(Node* root, int &index, string str)
     // found a leaf node
     if (!root->left && !root->right)
     {
-        cout << root->ch;
+        //cout << root->ch;
         return;
     }
 
@@ -66,7 +66,7 @@ __global__ void encode_kernel(int k, int count,char *str,  char *encode_map)
     //unsigned int flag = cudaStreamDefault;
     cudaStreamCreateWithFlags(&s1, cudaStreamNonBlocking);
     cudaStreamCreateWithFlags(&s2, cudaStreamNonBlocking);
-    //  printf("\nInside Kernel : %d and count : %d and string : %s",k, count, str);
+    //  //printf("\nInside Kernel : %d and count : %d and string : %s",k, count, str);
     int l = 2*k+1;
     int r = 2*k+2;
     //__shared__ char s_str[MAX_CODE_WIDTH];
@@ -81,29 +81,29 @@ __global__ void encode_kernel(int k, int count,char *str,  char *encode_map)
       }
       encode_map[d_tree_arr[k]*MAX_CODE_WIDTH + i+1] = '\0';
 
-		  // printf("\nCHAR:%c ENCODEDING:%s",d_tree_arr[k], str);
+		  // //printf("\nCHAR:%c ENCODEDING:%s",d_tree_arr[k], str);
       //fill_Map <<<1,1,0, s1>>>
 	  }
-    //printf("\nCHAR:%c", d_tree_arr[k]);
+    ////printf("\nCHAR:%c", d_tree_arr[k]);
     if (d_tree_arr[l] != '$'){
       //if(count != -1)
       str[count] = '0';
       str[count+1] = '\0';
       //append(str,'0', count);
-      //printf("Appending: 0");
-      //  printf("\nCHAR:%c LEFT ENCODEDING:%s",d_tree_arr[k], str);
+      ////printf("Appending: 0");
+      //  //printf("\nCHAR:%c LEFT ENCODEDING:%s",d_tree_arr[k], str);
       encode_kernel<<<1,1,0, s1>>>(l,count + 1, str, encode_map);
       //append(str,'\0',count);
       cudaDeviceSynchronize();
     }
 
     if (d_tree_arr[r] != '$') {
-      //  printf("Appending: 1");
+      //  //printf("Appending: 1");
       //  if(count != -1)
       str[count] = '1';
       str[count+1] = '\0';
       //append(str,'1',count);
-      //printf("\nCHAR:%c RIGHT ENCODEDING:%s",d_tree_arr[k], str);
+      ////printf("\nCHAR:%c RIGHT ENCODEDING:%s",d_tree_arr[k], str);
 
       encode_kernel<<<1,1,0, s2>>>(r, count + 1, str, encode_map);
       cudaDeviceSynchronize();
@@ -126,7 +126,7 @@ void decode_kernel(char *encoded_str,int k, int count) {
     int r = 2*k+2;
     if (d_tree_arr[l] == '$' && d_tree_arr[r] == '$')
     {
-        printf("\nDecoded CHAR:%c",d_tree_arr[k]);
+        //printf("\nDecoded CHAR:%c",d_tree_arr[k]);
         string_count = count;
     }
     if (encoded_str[count] == '0' && d_tree_arr[l] != '$' ){
@@ -135,7 +135,7 @@ void decode_kernel(char *encoded_str,int k, int count) {
     }
 
     if (encoded_str[count] == '1' && d_tree_arr[r] != '$') {
-      //printf("got right 1 count:%d\n", count);
+      ////printf("got right 1 count:%d\n", count);
       //count++;
 
       decode_kernel<<<1,1,0, s2>>>(encoded_str, r, count + 1);
@@ -147,7 +147,7 @@ void decode_kernel(char *encoded_str,int k, int count) {
 }
 
 /*__device__ void test(int cont){
-  printf("Test%d\n", count);
+  //printf("Test%d\n", count);
   count++;
 }*/
 __global__
@@ -163,9 +163,9 @@ void decode_parent_kernel(char *encoded_str, int string_size) {
 }
 __global__ void my_concat_kernel(char *encode_table, char *input_string, char *encoded_string, size_t input_size)
 {
-    //printf("In encode_kernel input string:%c\n", input_string[threadIdx.x]);
+    ////printf("In encode_kernel input string:%c\n", input_string[threadIdx.x]);
     int tid = threadIdx.x + (blockIdx.x * blockDim.x);
-    //printf("tid:%d\n", tid);
+    ////printf("tid:%d\n", tid);
     //int row = tid / MAX_CODE_WIDTH;
     //int col = tid % MAX_CODE_WIDTH;
     if (tid < input_size) {
@@ -180,7 +180,7 @@ void generateEncodedString(unordered_map<char, string> huffmanCode, string &text
 {
     cudaError_t err = cudaSuccess;
     int table_size = TOTAL_CHARS * MAX_CODE_WIDTH * sizeof(char);
-    //cout << "table size: " << table_size << endl;
+    ////cout << "table size: " << table_size << endl;
     char *h_encode_table = (char*) malloc(table_size);
     int encode_string_size = text.length() * MAX_CODE_WIDTH * sizeof(char);
     char *h_encoded_string = (char*) malloc(encode_string_size);
@@ -191,21 +191,21 @@ void generateEncodedString(unordered_map<char, string> huffmanCode, string &text
     memset(h_encode_table, 0, table_size);
     memset(h_encoded_string, 0, encode_string_size);
 
-    //cout << "Huffman Codes are :\n" << '\n';
+    ////cout << "Huffman Codes are :\n" << '\n';
     for (auto pair: huffmanCode) {
-        //cout << pair.first << " " << pair.second << '\n';
+        ////cout << pair.first << " " << pair.second << '\n';
         for (int j = 0; j < MAX_CODE_WIDTH; j++) {
             if (j < pair.second.length())
                 h_encode_table[pair.first * MAX_CODE_WIDTH + j] = pair.second[j];
         }
-        //cout << endl;
+        ////cout << endl;
     }
 
     // Allocate encode kernel variables
     char h_input_string[text.length()];
     strcpy(h_input_string, text.c_str());
-    //cout << "input text:" << text << endl;
-    //cout << "input string in host array:" << h_input_string << endl;
+    ////cout << "input text:" << text << endl;
+    ////cout << "input string in host array:" << h_input_string << endl;
     char *d_input_string = NULL;
     err = cudaMalloc((void**)&d_input_string, text.length()* sizeof(char));
     if (err != cudaSuccess)
@@ -244,7 +244,7 @@ void generateEncodedString(unordered_map<char, string> huffmanCode, string &text
 
     int blocksPerGrid = (text.length() / 1024) + 1;
     int threadsPerBlock = 1024;// FILL HERE
-	printf("CUDA encode kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
+	//printf("CUDA encode kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
 
 	cudaEvent_t start, stop;
 
@@ -252,16 +252,16 @@ void generateEncodedString(unordered_map<char, string> huffmanCode, string &text
     cudaEventCreate(&stop);
 
 	cudaEventRecord(start);
-    //printf("Before my_concat_kernel");
+    ////printf("Before my_concat_kernel");
     my_concat_kernel<<<blocksPerGrid, threadsPerBlock>>>(d_encode_table, d_input_string, d_encoded_string, text.length());
-    //printf("After my_concat_kernel");
+    ////printf("After my_concat_kernel");
 	cudaEventRecord(stop);
 
 	cudaEventSynchronize(stop);
 
 	float elapsed = 0;
 	cudaEventElapsedTime(&elapsed, start, stop);
-	printf("The elapsed time for encode kernal exexution is %.2f ms\n", elapsed);
+	//printf("The elapsed time for encode kernal exexution is %.2f ms\n", elapsed);
 
     cudaEventDestroy (start);
     cudaEventDestroy (stop);
@@ -275,9 +275,9 @@ void generateEncodedString(unordered_map<char, string> huffmanCode, string &text
     }
     cudaThreadSynchronize();
 
-    printf("After kernel execution result:\n");
+    //printf("After kernel execution result:\n");
     for(int i = 0; i < text.length()*8; i++) {
-        printf("%c", h_encoded_string[i]);
+        //printf("%c", h_encoded_string[i]);
         if (h_encoded_string[i] != 0)
             final_encoded_string += h_encoded_string[i];
     }
@@ -330,17 +330,17 @@ void buildHuffmanTree(string text)
 
     //int inx = 0;
     //preorder(pq, a, &inx);
-    printf("Total nodes:%d\n", nodes);
+    //printf("Total nodes:%d\n", nodes);
     // root stores pointer to root of Huffman Tree
     Node* root = pq.top();
     int treeHeight = height(root);
     char *h_arr = (char *)malloc(sizeof(char)*MAX_NODES);
     memset(h_arr, '\0', MAX_NODES);
     printLevelOrder(root, h_arr, treeHeight);
-    printf("Tree converted to array :\n");
+    //printf("Tree converted to array :\n");
     for (int i = 0; i < 15; i++){
       //  h_arr[i] = 65 + i;
-        printf("%c->", h_arr[i]);
+        //printf("%c->", h_arr[i]);
     }
 
     char *d_str = NULL;
@@ -380,7 +380,7 @@ void buildHuffmanTree(string text)
     //encode(root, "", huffmanCode);
     int blocksPerGrid = 1;//(text.length() / 1024) + 1;
     int threadsPerBlock = 1;//1024;// FILL HERE
-    printf("CUDA encode kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
+    //printf("CUDA encode kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
     cudaDeviceSetLimit(cudaLimitDevRuntimeSyncDepth, 9);
 
     cudaEvent_t start, stop;
@@ -396,7 +396,7 @@ void buildHuffmanTree(string text)
 
   	float elapsed = 0;
   	cudaEventElapsedTime(&elapsed, start, stop);
-  	printf("The elapsed time for Encode kernal excution is %.2f ms\n", elapsed);
+  	//printf("The elapsed time for Encode kernal excution is %.2f ms\n", elapsed);
 
     cudaEventDestroy (start);
     cudaEventDestroy (stop);
@@ -410,31 +410,31 @@ void buildHuffmanTree(string text)
     }
 
 #if 0
-    printf("Final Encoded Table\n");
-    //printf("\nCHAR:%c ENCODEDING:%s",h_arr[4], h_encode_map[97*MAX_CODE_WIDTH]);
+    //printf("Final Encoded Table\n");
+    ////printf("\nCHAR:%c ENCODEDING:%s",h_arr[4], h_encode_map[97*MAX_CODE_WIDTH]);
     for (int i = 0; i < MAX_NODES ; i++) {
       if(h_arr[i] != '$' && h_arr[i] != '*' && h_arr[i] != '\0') {
-        printf("\nchar:%c:", h_arr[i]);
+        //printf("\nchar:%c:", h_arr[i]);
         for (int j = 0; j < 8; j++) {
           char tmp = h_encode_map[h_arr[i]*MAX_CODE_WIDTH + j];
           if (tmp != '\0')
-            printf("%c", tmp);
+            //printf("%c", tmp);
         }
       }
     }
-    printf("\n\n");
+    //printf("\n\n");
 #endif
 
     cudaThreadSynchronize();
     //generateEncodedString(huffmanCode, text, str);
-    cout << "\nOriginal string was :\n" << text << '\n';
+    //cout << "\nOriginal string was :\n" << text << '\n';
     // print encoded string
     string str = "";
     for (char ch: text) {
         for (int i = 0; h_encode_map[(ch * MAX_CODE_WIDTH) + i] != '\0'; i++)
             str += h_encode_map[ch * MAX_CODE_WIDTH + i];
     }
-    cout << "\nEncoded string is :\n" << str << '\n';
+    //cout << "\nEncoded string is :\n" << str << '\n';
 
 
     char h_input_string[str.length()];
@@ -473,7 +473,7 @@ void buildHuffmanTree(string text)
 
     elapsed = 0;
   	cudaEventElapsedTime(&elapsed, start, stop);
-  	printf("The elapsed time for Encode kernal excution is %.2f ms\n", elapsed);
+  	//printf("The elapsed time for Encode kernal excution is %.2f ms\n", elapsed);
 
     cudaEventDestroy (start);
     cudaEventDestroy (stop);

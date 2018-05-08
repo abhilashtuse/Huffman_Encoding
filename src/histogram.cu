@@ -89,7 +89,7 @@ void calculateFrequencies(string &text, unordered_map<char, int> &freq) {
 
 	int blocksPerGrid = 7;// FILL HERE
     int threadsPerBlock = 128;// FILL HERE
-	printf("CUDA kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
+	//printf("CUDA kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
 
 	cudaEvent_t start, stop;
 
@@ -104,7 +104,7 @@ void calculateFrequencies(string &text, unordered_map<char, int> &freq) {
 
 	float elapsed = 0;
 	cudaEventElapsedTime(&elapsed, start, stop);
-	printf("The elapsed time for histogram kernal exexution is %.2f ms\n", elapsed);
+	//printf("The elapsed time for histogram kernal exexution is %.2f ms\n", elapsed);
 
     cudaEventDestroy (start);
     cudaEventDestroy (stop);
@@ -120,7 +120,7 @@ void calculateFrequencies(string &text, unordered_map<char, int> &freq) {
 
     // Copy the device result matrix in device memory to the host result matrix
     // in host memory.
-    printf("Copy output data from the CUDA device to the host memory\n");
+    //printf("Copy output data from the CUDA device to the host memory\n");
     err = cudaMemcpy(h_histo, d_histo, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {

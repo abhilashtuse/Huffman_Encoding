@@ -65,10 +65,10 @@ void printLevelOrder(Node *root, char *arr, int treeHeight)
         {
             Node *node = q.front();
             if (node->ch == '\0') {
-               printf("* "); arr[ind] = '*'; ind++;
+               arr[ind] = '*'; ind++;
             }
             else {
-               printf("%c ", node->ch); arr[ind] = node->ch; ind++;
+               arr[ind] = node->ch; ind++;
             }
             q.pop();
             if (node->left != NULL)
@@ -82,7 +82,6 @@ void printLevelOrder(Node *root, char *arr, int treeHeight)
 
             nodeCount--;
         }
-        cout << endl;
         counter++;
     }
 }
