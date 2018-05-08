@@ -7,12 +7,14 @@
 
 using namespace std;
 
-#define TEN_KB 10250
+#define DATA_SIZE 10250
+//15360
+//10250
 #define TOTAL_CHARS 256
 #define MAX_CODE_WIDTH 12 //pow(2, height(root)); //Worst case height of tree when all chars have same frequency
 
-__constant__ char d_tree_arr_const[TEN_KB]; // Device side tree in array form
-extern __constant__ char d_input_string_const[TEN_KB];
+__constant__ char d_tree_arr_const[DATA_SIZE]; // Device side tree in array form
+extern __constant__ char d_input_string_const[DATA_SIZE];
 __constant__ char d_map_table[TOTAL_CHARS * MAX_CODE_WIDTH];
 __global__ void encode_kernel(char *d_map_table_test, int partition_size, int partition_index)
 {
@@ -48,7 +50,7 @@ __global__ void encode_kernel(char *d_map_table_test, int partition_size, int pa
   __syncthreads();
 }
 
-//__device__ char d_encoded_string[TEN_KB * MAX_CODE_WIDTH];
+//__device__ char d_encoded_string[DATA_SIZE * MAX_CODE_WIDTH];
 __global__ void generateEncodedStringKernel(char *d_encoded_string)
 {
     int tid = threadIdx.x + (blockIdx.x * blockDim.x);
@@ -76,7 +78,7 @@ __global__ void generateEncodedStringKernel(char *d_encoded_string)
 void generateEncodedString(int input_str_array_length, Node *root)
 {
     cudaError_t err = cudaSuccess;
-    int encode_str_size = TEN_KB * MAX_CODE_WIDTH * sizeof(char);
+    int encode_str_size = DATA_SIZE * MAX_CODE_WIDTH * sizeof(char);
     char *h_encoded_string = (char *)malloc(encode_str_size);
 
     // Verify that allocations succeeded
@@ -94,7 +96,8 @@ void generateEncodedString(int input_str_array_length, Node *root)
     }
     int blocksPerGrid = (input_str_array_length / 1024) + 1;
     int threadsPerBlock = 1024;// FILL HERE
-    printf("CUDA generateEncodedStringKernel kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
+  //  printf("CUDA generateEncodedStringKernel kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
+  #if 0
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
@@ -106,10 +109,13 @@ void generateEncodedString(int input_str_array_length, Node *root)
     cudaEventSynchronize(stop);
     float elapsed = 0;
     cudaEventElapsedTime(&elapsed, start, stop);
-    printf("The elapsed time for generateEncodedString kernal exexution is %.2f ms\n", elapsed);
+  //  printf("The elapsed time for generateEncodedString kernal exexution is %.2f ms\n", elapsed);
     cudaEventDestroy (start);
     cudaEventDestroy (stop);
     cudaThreadSynchronize();
+    #endif
+    generateEncodedStringKernel<<<blocksPerGrid, threadsPerBlock>>>(d_encoded_string);
+
     err = cudaMemcpy(h_encoded_string, d_encoded_string, encode_str_size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -137,10 +143,12 @@ void generateEncodedString(int input_str_array_length, Node *root)
     }
 
     int index = -1;
-    cout << "\nDecoded string is: \n";
+    //cout << "\nDecoded string is: \n";
     while (index < (int)final_encode_str.size() - 2) {
         cpu_decode(root, index, final_encode_str);
     }
+    cudaFree(d_encoded_string);
+    free(h_encoded_string);
 }
 
 // traverse the Huffman Tree and store Huffman Codes
@@ -187,14 +195,14 @@ void gpu_encode(char *h_tree_arr, int h_tree_arr_length, char *input_str_array, 
     unordered_map<char, string> huffmanCode;
     cpu_encode(root, "", huffmanCode);//gpu_encode(h_tree_arr, h_tree_arr_length, input_str_array, text.length());
 
-    cout << "\nHuffman Codes are :\n" << '\n';
+  //  cout << "\nHuffman Codes are :\n" << '\n';
     for (auto pair: huffmanCode) {
-        cout << pair.first << " " << pair.second << '\n';
+      //  cout << pair.first << " " << pair.second << '\n';
         for (int j = 0; j < MAX_CODE_WIDTH; j++) {
             if (j < pair.second.length())
                 h_map_table[pair.first * MAX_CODE_WIDTH + j] = pair.second[j];
         }
-        cout << endl;
+      //  cout << endl;
     }
 
     err = cudaMemcpyToSymbol(d_map_table, h_map_table, table_size);
@@ -204,4 +212,5 @@ void gpu_encode(char *h_tree_arr, int h_tree_arr_length, char *input_str_array, 
         exit(EXIT_FAILURE);
     }
     generateEncodedString(input_str_array_length, root);
+    free(h_map_table);
 }

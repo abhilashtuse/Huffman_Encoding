@@ -69,6 +69,7 @@ void gpu_decode(int input_str_length) {
         fprintf(stderr, "Failed to allocate device input string (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+		#if 0
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
@@ -83,12 +84,12 @@ void gpu_decode(int input_str_length) {
 
     float elapsed = 0;
   	cudaEventElapsedTime(&elapsed, start, stop);
-  	printf("The elapsed time for Decode kernal excution is %.2f ms\n", elapsed);
+  	//printf("The elapsed time for Decode kernal excution is %.2f ms\n", elapsed);
 
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
     cudaThreadSynchronize();
-
+		#endif
     err = cudaMemcpy(h_final_str, d_final_str, input_str_length, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -111,7 +112,7 @@ void cpu_decode(Node* root, int &index, string str)
     // found a leaf node
     if (!root->left && !root->right)
     {
-        cout << root->ch;
+      //  cout << root->ch;
         return;
     }
 

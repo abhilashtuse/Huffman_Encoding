@@ -1,9 +1,11 @@
 #include "histogram.h"
 
-#define TEN_KB 10250
+#define DATA_SIZE 10250
+//15360
+//10250
 #define TOTAL_CHARS 256
 
-__constant__ char d_input_string_const[TEN_KB];
+__constant__ char d_input_string_const[DATA_SIZE];
 
 __global__ void histo_kernel(long size, unsigned int *histo)
 {
@@ -21,7 +23,6 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
     //cout << "input:" << text << endl;
     cudaError_t err = cudaSuccess;
 
-	// Allocate the host input matrix h_A
     int histo_size = TOTAL_CHARS * sizeof(int);
     unsigned int *h_histo = (unsigned int *)malloc(histo_size);
 
@@ -37,11 +38,11 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
     {
       h_histo[i] = 0;
     }
-    unsigned int *d_histo =NULL;
+    unsigned int *d_histo = NULL;
     err = cudaMalloc((void**)&d_histo, histo_size * sizeof(int));
     if (err != cudaSuccess)
     {
-        fprintf(stderr, "Failed to allocate device matrix B (error code %s)!\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to allocate device histo (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
@@ -54,8 +55,8 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
 
 	int blocksPerGrid = 7;// FILL HERE
     int threadsPerBlock = 128;// FILL HERE
-	printf("CUDA kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
-
+	//printf("CUDA kernel launch with %d blocks of %d threads\n", blocksPerGrid, threadsPerBlock);
+#if 0
 	cudaEvent_t start, stop;
 
     cudaEventCreate(&start);
@@ -69,27 +70,27 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
 
 	float elapsed = 0;
 	cudaEventElapsedTime(&elapsed, start, stop);
-	printf("The elapsed time for histogram kernal exexution is %.2f ms\n", elapsed);
+	//printf("The elapsed time for histogram kernal exexution is %.2f ms\n", elapsed);
 
     cudaEventDestroy (start);
     cudaEventDestroy (stop);
     // <--
+#endif
 
+		histo_kernel<<<blocksPerGrid, threadsPerBlock>>>(input_str_length, d_histo);
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
-        fprintf(stderr, "Failed to launch matrixMul kernel (error code %s)!\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to launch histo kernel (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 	cudaThreadSynchronize();
 
-    // Copy the device result matrix in device memory to the host result matrix
-    // in host memory.
-    printf("Copy output data from the CUDA device to the host memory\n");
+
     err = cudaMemcpy(h_histo, d_histo, histo_size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
-        fprintf(stderr, "Failed to copy matrix C from device to host (error code %s)!\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to copy histo from device to host (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
     cudaThreadSynchronize();
@@ -97,12 +98,12 @@ void calculateFrequencies(char *char_array, int input_str_length, unordered_map<
     //Testing
     for(int i = 0; i < TOTAL_CHARS; i++){
 		if (h_histo[i] != 0) {
-			printf("\nindex: %c   Frequency: %d", i, h_histo[i]);
+		//	printf("\nindex: %c   Frequency: %d", i, h_histo[i]);
 			freq.insert( std::pair<char,int>(i,h_histo[i]));
 		}
     }
 
     cudaFree(d_histo);
     // Free host memory
-	free(h_histo);
+		free(h_histo);
 }
