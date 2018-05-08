@@ -1,6 +1,7 @@
 #include "histogram.h"
 
-#define DATA_SIZE 10250
+#define DATA_SIZE 10250 * 3
+//20500
 //15360
 //10250
 #define TOTAL_CHARS 256
