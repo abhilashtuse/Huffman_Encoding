@@ -45,6 +45,33 @@ ubuntu@tegra-ubuntu:~/Huffman_Encoding/src$ make
 ubuntu@tegra-ubuntu:~/Huffman_Encoding/src$ ./main ../input/SampleTextFile_1kb.txt
 ```
 
+## Running the CPU version
+CPU version of code can be found under cpu directory.
+Go to cpu directory and use following command to compile the code.
+```
+ubuntu@tegra-ubuntu:~/Huffman_Encoding$ cd cpu
+ubuntu@tegra-ubuntu:~/Huffman_Encoding/cpu$ g++ -std=c++11 cpu_huffman.cpp -o cpu_huffman
+```
+
+To run the project use following command and pass input file path as an argument.
+```
+ubuntu@tegra-ubuntu:~/Huffman_Encoding/cpu$ ./cpu_huffman ../input/SampleTextFile_1kb.txt
+```
+
+After this, output file will be generated in the same directory. To check the difference between generated
+output file and input file use following command.
+```
+ubuntu@tegra-ubuntu:~/Huffman_Encoding/cpu$ diff ./out.txt ../input/SampleTextFile_1kb.txt
+```
+
+Note: To get the end-to-end execution time, you can comment line 71, and uncomment line 184 in cpu_huffman.cpp. This will give the algorithm execution time and output file won't be generated.
+Use following command to check the end-to-end execution time.
+```
+ubuntu@tegra-ubuntu:~/Huffman_Encoding/cpu$ g++ -std=c++11 cpu_huffman.cpp -o cpu_huffman
+ubuntu@tegra-ubuntu:~/Huffman_Encoding/cpu$ ./cpu_huffman ../input/SampleTextFile_1kb.txt
+```
+
+
 ## Authors
 
 * **Abhilash Tuse** - [abhilashtuse](https://github.com/abhilashtuse)

@@ -181,7 +181,7 @@ int main(int argc, char** argv)
 
     buildHuffmanTree(text);
     auto done = std::chrono::high_resolution_clock::now();
-    std::cout << "Total execution time:" << std::chrono::duration_cast<std::chrono::nanoseconds>(done-started).count();
+    //std::cout << "Total execution time:" << std::chrono::duration_cast<std::chrono::nanoseconds>(done-started).count();
 
     inp_file.close();
 	out_file.close();
