@@ -60,7 +60,7 @@ void buildHuffmanTree(string text)
         nodes++;
     }
 
-    printf("Total nodes:%d\n", nodes);
+    //printf("Total nodes:%d\n", nodes);
     // root stores pointer to root of Huffman Tree
     Node* root = pq.top();
 
@@ -70,7 +70,7 @@ void buildHuffmanTree(string text)
     memset(h_tree_arr, '\0', sizeof(char) * h_tree_arr_length);
 
     convertTreeToArray(root, h_tree_arr, treeHeight);
-    printf("Tree converted to array :\n");
+    //printf("Tree converted to array :\n");
     /*for (int i = 0; i < 15; i++){
       //  h_tree_arr[i] = 65 + i;
         printf("%c->", h_tree_arr[i]);
