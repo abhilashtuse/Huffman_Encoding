@@ -5,7 +5,10 @@
 
 using namespace std;
 
+extern ofstream out_file;
+#if 0
 extern __constant__ char d_tree_arr_const[];
+
 
 __device__ void append(char *s, char c, int position)
 {
@@ -16,43 +19,43 @@ __device__ void append(char *s, char c, int position)
 __device__ int string_count = 0;
 
 __global__
-void decode_kernel(int k, int count)
+void decode_kernel(char *d_encoded_str, int k, int count)
 {
-  /*if(threadIdx.x == 0) {
+  if(threadIdx.x == 0) {
     cudaStream_t s1, s2;
     //unsigned int flag = cudaStreamDefault;
     cudaStreamCreateWithFlags(&s1, cudaStreamNonBlocking);
     cudaStreamCreateWithFlags(&s2, cudaStreamNonBlocking);
     int l = 2*k+1;
     int r = 2*k+2;
-    if (d_tree_arr[l] == '$' && d_tree_arr[r] == '$')
+    if (d_tree_arr_const[l] == '$' && d_tree_arr_const[r] == '$')
     {
         //printf("\nDecoded CHAR:%c",d_tree_arr[k]);
         string_count = count;
     }
-    if (encoded_str[count] == '0' && d_tree_arr[l] != '$' ){
-      decode_kernel<<<1,1,0, s1>>>(l, count + 1);
+    if (d_encoded_str[count] == '0' && d_tree_arr_const[l] != '$' ){
+      decode_kernel<<<1,1,0, s1>>>(d_encoded_str, l, count + 1);
       cudaDeviceSynchronize();
     }
 
-    if (encoded_str[count] == '1' && d_tree_arr[r] != '$') {
+    if (d_encoded_str[count] == '1' && d_tree_arr_const[r] != '$') {
       //printf("got right 1 count:%d\n", count);
       //count++;
 
-      decode_kernel<<<1,1,0, s1>>>( r, count + 1);
+      decode_kernel<<<1,1,0, s1>>>(d_encoded_str, r, count + 1);
       cudaDeviceSynchronize();
       //cudaStreamDestroy(s2);
     }
   }
-  __syncthreads();*/
+  __syncthreads();
 }
 
 __global__
-void decode_parent_kernel(int string_size) {
+void decode_parent_kernel(char *d_encoded_str, int string_size) {
 
   if(threadIdx.x == 0){
     while (string_count < string_size) {
-      decode_kernel<<<1,1,0>>>(0, string_count);
+      decode_kernel<<<1,1,0>>>(d_encoded_str, 0, string_count);
       cudaDeviceSynchronize();
     }
   }
@@ -69,7 +72,7 @@ void gpu_decode(int input_str_length) {
         fprintf(stderr, "Failed to allocate device input string (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
-		#if 0
+#if 0
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
@@ -89,7 +92,7 @@ void gpu_decode(int input_str_length) {
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
     cudaThreadSynchronize();
-		#endif
+#endif
     err = cudaMemcpy(h_final_str, d_final_str, input_str_length, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -97,11 +100,9 @@ void gpu_decode(int input_str_length) {
         exit(EXIT_FAILURE);
     }
     cudaThreadSynchronize();
-    //cudaFree(d_str);
-    //cudaFree(d_encode_map);
-    //cudaFree(d_input_string);
     cudaFree(d_final_str);
 }
+#endif
 
 void cpu_decode(Node* root, int &index, string str)
 {
@@ -112,7 +113,7 @@ void cpu_decode(Node* root, int &index, string str)
     // found a leaf node
     if (!root->left && !root->right)
     {
-      //  cout << root->ch;
+        out_file << root->ch;
         return;
     }
 

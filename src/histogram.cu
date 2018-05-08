@@ -1,6 +1,6 @@
 #include "histogram.h"
 
-#define DATA_SIZE 10250 * 2
+#define DATA_SIZE 10250 * 3
 //20500
 //15360
 //10250
